@@ -1,0 +1,5 @@
+export enum PDT_USER {
+    USER_SING_IN = "USER_SING_IN",
+    USER_SING_UP = "USER_SING_UP",
+    USER_SING_OUT = "USER_SING_OUT"
+}
