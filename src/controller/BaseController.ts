@@ -1,6 +1,6 @@
 import {PACKET_CLASS_TYPES} from "../data/model/packet/PacketClassType";
 import Packet from "../data/model/packet/Packet";
-import FactoryController from "./FactoryController";
+import ControllerFactory from "./ControllerFactory";
 
 
 export default abstract class BaseController {

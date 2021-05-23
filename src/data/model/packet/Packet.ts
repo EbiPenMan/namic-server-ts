@@ -39,11 +39,13 @@ export default class Packet {
     }
 
     createResponse(ReceivedPacket: Packet) {
-        this
+        return this
+            .setSocketId(ReceivedPacket.socketId)
             .setDataType(ReceivedPacket.dataType)
+            .setClassType(ReceivedPacket.classType)
             .setReqIdClient(ReceivedPacket.reqIdClient)
             .setReqIdServer(ReceivedPacket.reqIdServer);
-        return this;
+
     }
 
     setDataType(type: string) {

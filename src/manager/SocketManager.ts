@@ -14,7 +14,7 @@ import {PacketMessageSendingType} from "../data/model/packet/PacketMessageSendin
 import {PACKET_MESSAGE_SENDING_TYPE, Packet_Message_Serialization_Type} from "../config/Configs";
 import {PacketMessageSerializationType} from "../data/model/packet/PacketMessageSerializationType";
 import {PACKET_CLASS_TYPES} from "../data/model/packet/PacketClassType";
-import FactoryController from "../controller/FactoryController";
+import ControllerFactory from "../controller/ControllerFactory";
 
 
 export default class SocketManager {
@@ -110,7 +110,7 @@ export default class SocketManager {
 
         if (packet.classType != null) {
             packet.setSocketId(socketId);
-            FactoryController.getInstance().getControllerByType(packet.classType).onPacket(packet);
+            ControllerFactory.getInstance().getControllerByType(packet.classType).onPacket(packet);
         }
         else {
             console.warn("[SocketManager][messageHandler] - packet does not have classType.", packet);

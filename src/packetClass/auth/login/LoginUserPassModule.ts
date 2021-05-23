@@ -1,41 +1,37 @@
-import Global from "../../../Global";
 import Packet from "../../../data/model/packet/Packet";
-import {
-    ERROR_ALREADY_EXISTS, ERROR_CREATE, ERROR_DB_CREATE,
+import PacketError, {
+    ERROR_ALREADY_EXISTS,
+    ERROR_CREATE,
+    ERROR_DB_CREATE,
     ERROR_INVALID_PARAM,
     ERROR_NOT_FOUND,
     ERROR_REQUIRED_FIELD
 } from "../../../data/model/packet/PacketError";
 import bcrypt from "bcrypt";
 import {BASE_URL, PASSWORD_SALT_ROUNDS, USER_DEFAULT_PICTURE} from "../../../config/Configs";
-import {v4 as uuidv4} from "uuid";
-import LoginPlatformBaseModule from "./LoginPlatformBaseModule";
+import LoginPlatformBaseModule, {LoginPlatformType} from "./LoginPlatformBaseModule";
 import DbManager from "../../../manager/DbManager";
-import UserModule from "../../../module/UserModule";
 import {PACKET_DATA_TYPES} from "../../../data/model/packet/PacketDataType";
+import SocketManager from "../../../manager/SocketManager";
 
 
-export default class LoginUserPassModule implements  LoginPlatformBaseModule{
-    userM: UserModule;
-    constructor(userM:UserModule) {
-        this.userM = userM;
-    }
+export default class LoginUserPassModule extends LoginPlatformBaseModule {
 
-    onSignIn(packet:Packet):Promise<any> {
+    public loginPlatformType: LoginPlatformType = LoginPlatformType.USER_PASS;
+
+    onSignIn(packet: Packet): Promise<any | PacketError> {
 
         const self = this;
 
-        return new Promise((resolve, reject) => {
+        return new Promise((resolve: any, reject: (value: PacketError) => void) => {
 
             if (packet.data == null || packet.data.loginPlatformData == null || packet.data.loginPlatformData.userName == null || packet.data.loginPlatformData.password == null) {
-                // this.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_IN).setError(ERROR_REQUIRED_FIELD("userName,password")).toString());
-                reject("ERROR_REQUIRED_FIELD=userName,password");
+                reject(ERROR_REQUIRED_FIELD("userName,password"));
                 return;
             }
 
             if (packet.data.loginPlatformData.userName === "" || packet.data.loginPlatformData.password === "") {
-                // this.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_IN).setError(ERROR_INVALID_PARAM("userName,password")).toString());
-                reject("ERROR_INVALID_PARAM=userName,password");
+                reject(ERROR_INVALID_PARAM("userName,password"));
                 return;
             }
 
@@ -46,123 +42,114 @@ export default class LoginUserPassModule implements  LoginPlatformBaseModule{
                     console.log("[PlayerController] - [onSignIn] - db login-platform res: ", res);
                     bcrypt.compare(packet.data.loginPlatformData.password, res[0].loginPlatformDataRaw.password, function (err, result) {
                         if (result != null && result === true) {
-
                             DbManager.getInstance().foundDocument(
                                 "user",
                                 {"loginPlatforms.loginPlatformId": res[0]._id.toString()},
                                 function (res) {
                                     console.log("[PlayerController] - [onSignIn] - db user res: ", res);
-                                    self.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_IN).setData(res[0]).toString());
                                     resolve(res);
                                 },
                                 function (error) {
-                                    self.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_IN).setError(ERROR_NOT_FOUND("user by loginPlatform")).toString());
-                                    reject("ERROR_NOT_FOUND=user on user");
+                                    reject(ERROR_NOT_FOUND("user on user"));
                                 }
                             );
-
-                        } else {
-                            self.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_IN).setError(ERROR_INVALID_PARAM("password")).toString());
-                            reject("ERROR_INVALID_PARAM=password on user");
+                        }
+                        else {
+                            reject(ERROR_INVALID_PARAM("password on user"));
                         }
                     });
                 },
                 function (error) {
-                    self.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_IN).setError(ERROR_NOT_FOUND("userName")).toString());
-                    reject("ERROR_NOT_FOUND=userName on login-platform");
+                    reject(ERROR_NOT_FOUND("userName on login-platform"));
                 }
             );
-            //     .catch(function () {
-            //     console.log("test ");
-            //
-            // });
-
         });
 
     }
 
-    onSignUp(packet:Packet):Promise<any> {
+    onSignUp(packet: Packet): Promise<any | PacketError> {
         const self = this;
 
-        if (packet.data == null || packet.data.loginPlatformData == null || packet.data.loginPlatformData.userName == null || packet.data.loginPlatformData.password == null) {
-            this.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_UP).setError(ERROR_REQUIRED_FIELD("userName,password")).toString());
-            return;
-        }
+        return new Promise((resolve: any, reject: (value: PacketError) => void) => {
 
-        if (packet.data.loginPlatformData.userName === "" || packet.data.loginPlatformData.password === "") {
-            this.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_UP).setError(ERROR_INVALID_PARAM("userName,password")).toString());
-            return;
-        }
+            if (packet.data == null || packet.data.loginPlatformData == null || packet.data.loginPlatformData.userName == null || packet.data.loginPlatformData.password == null) {
+                reject(ERROR_REQUIRED_FIELD("userName,password"));
+                return;
+            }
 
-        DbManager.getInstance().foundDocument(
-            "login-platform",
-            {loginPlatformPlayerId: packet.data.loginPlatformData.userName})
-            .then(function (res) {
-                self.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_UP).setError(ERROR_ALREADY_EXISTS("userName")).toString());
-            })
-            .catch(function (error) {
-                    bcrypt.hash(packet.data.loginPlatformData.password, PASSWORD_SALT_ROUNDS, function (err, hash) {
-                        if (hash) {
-                            let displayNamePostfix = "_" + Date.now();
-                            DbManager.getInstance().insertDocumentOne(
-                                "login-platform",
-                                {
-                                    loginPlatformType: packet.data.loginPlatformType,
-                                    loginPlatformPlayerId: packet.data.loginPlatformData.userName,
-                                    loginPlatformPlayerIdOrginalName: "userName",
-                                    loginPlatformDataRaw: {
-                                        userName: packet.data.loginPlatformData.userName,
-                                        password: hash
-                                    },
-                                    displayName: packet.data.loginPlatformData.userName + displayNamePostfix,
-                                    names: {
-                                        familyName: "",
-                                        givenName: packet.data.loginPlatformData.userName + displayNamePostfix,
-                                        middleName: ""
-                                    },
-                                    emails: [], // str
-                                    phones: [],
-                                    photos: [BASE_URL + USER_DEFAULT_PICTURE], // str
-                                    friends: [],// { id,name,photo }
-                                })
-                                .then(function (res) {
+            if (packet.data.loginPlatformData.userName === "" || packet.data.loginPlatformData.password === "") {
+                reject(ERROR_INVALID_PARAM("userName,password"));
+                return;
+            }
 
-                                    DbManager.getInstance().foundDocument("defaultUserData", {userType: packet.data.loginPlatformData.userType},
-                                        function (resDef) {
-                                            let userData = resDef[0];
-                                            delete userData._id;
-                                            userData.publicData.name = res.ops[0].displayName;
-                                            userData.publicData.photoUrl = res.ops[0].photos[0];
-                                            userData.loginPlatforms = [{
-                                                loginPlatformId: res.insertedId.toString(),
-                                                loginPlatformType: res.ops[0].loginPlatformType,
-                                                loginPlatformPlayerId: res.ops[0].loginPlatformPlayerId
-                                            }];
-
-                                            DbManager.getInstance().insertDocumentOne(
-                                                "user", userData)
-                                                .then(function (res) {
-                                                    self.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_UP).setData({id: res.insertedId.toString()}).toString());
-                                                })
-                                                .catch(function (error) {
-                                                    self.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_UP).setError(ERROR_DB_CREATE("user")).toString());
-                                                });
-                                        }).catch(function (errorDef) {
-                                        self.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_UP).setError(ERROR_NOT_FOUND("defaultUserData")).toString());
+            DbManager.getInstance().foundDocument(
+                "login-platform",
+                {loginPlatformPlayerId: packet.data.loginPlatformData.userName})
+                .then(function (res) {
+                    reject(ERROR_ALREADY_EXISTS("userName"));
+                })
+                .catch(function (error) {
+                        bcrypt.hash(packet.data.loginPlatformData.password, PASSWORD_SALT_ROUNDS, function (err, hash) {
+                            if (hash) {
+                                let displayNamePostfix = "_" + Date.now();
+                                DbManager.getInstance().insertDocumentOne(
+                                    "login-platform",
+                                    {
+                                        loginPlatformType: packet.data.loginPlatformType,
+                                        loginPlatformPlayerId: packet.data.loginPlatformData.userName,
+                                        loginPlatformPlayerIdOriginalName: "userName",
+                                        loginPlatformDataRaw: {
+                                            userName: packet.data.loginPlatformData.userName,
+                                            password: hash
+                                        },
+                                        displayName: packet.data.loginPlatformData.userName + displayNamePostfix,
+                                        names: {
+                                            familyName: "",
+                                            givenName: packet.data.loginPlatformData.userName + displayNamePostfix,
+                                            middleName: ""
+                                        },
+                                        emails: [], // str
+                                        phones: [],
+                                        photos: [BASE_URL + USER_DEFAULT_PICTURE], // str
+                                        friends: [],// { id,name,photo }
                                     })
-                                })
-                                .catch(function (error) {
-                                    self.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_UP).setError(ERROR_DB_CREATE("login Platform")).toString());
-                                });
+                                    .then(function (res) {
+                                        DbManager.getInstance().foundDocument("defaultUserData", {userType: packet.data.loginPlatformData.userType},
+                                            function (resDef) {
+                                                let userData = resDef[0];
+                                                delete userData._id;
+                                                userData.publicData.name = res.ops[0].displayName;
+                                                userData.publicData.photoUrl = res.ops[0].photos[0];
+                                                userData.loginPlatforms = [{
+                                                    loginPlatformId: res.insertedId.toString(),
+                                                    loginPlatformType: res.ops[0].loginPlatformType,
+                                                    loginPlatformPlayerId: res.ops[0].loginPlatformPlayerId
+                                                }];
 
-
-                        } else {
-                            self.userM.sendPacketToUser(new Packet().createResponse(packet).setDataType(PACKET_DATA_TYPES.AUTH_SING_UP).setError(ERROR_CREATE("user password")).toString());
-                        }
-                    });
-                }
-            );
-
+                                                DbManager.getInstance().insertDocumentOne(
+                                                    "user", userData)
+                                                    .then(function (res) {
+                                                        resolve(res);
+                                                    })
+                                                    .catch(function (error) {
+                                                        reject(ERROR_DB_CREATE("user"));
+                                                    });
+                                            })
+                                            .catch(function (errorDef) {
+                                                reject(ERROR_NOT_FOUND("defaultUserData"));
+                                            })
+                                    })
+                                    .catch(function (error) {
+                                        reject(ERROR_DB_CREATE("login Platform"));
+                                    });
+                            }
+                            else {
+                                reject(ERROR_CREATE("user password"));
+                            }
+                        });
+                    }
+                );
+        });
     }
 
 

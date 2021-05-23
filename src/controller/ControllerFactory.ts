@@ -2,8 +2,8 @@ import BaseController from "./BaseController";
 import {PACKET_CLASS_TYPES} from "../data/model/packet/PacketClassType";
 import UserController from "./user/UserController";
 
-export default class FactoryController {
-    private static instance: FactoryController;
+export default class ControllerFactory {
+    private static instance: ControllerFactory;
 
     public controllers: BaseController[] = [];
 
@@ -11,12 +11,12 @@ export default class FactoryController {
         this.initControllerList();
     }
 
-    public static getInstance(): FactoryController {
-        if (!FactoryController.instance) {
-            FactoryController.instance = new FactoryController();
+    public static getInstance(): ControllerFactory {
+        if (!ControllerFactory.instance) {
+            ControllerFactory.instance = new ControllerFactory();
         }
 
-        return FactoryController.instance;
+        return ControllerFactory.instance;
     }
 
     private initControllerList() {

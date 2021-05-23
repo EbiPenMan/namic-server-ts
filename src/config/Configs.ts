@@ -9,4 +9,4 @@ export const DB_URL = "mongodb://localhost:27017/";
 export const DB_NAME = "namic";
 export const PACKET_MESSAGE_SENDING_TYPE : PacketMessageSendingType = PacketMessageSendingType.Text;
 export const Packet_Message_Serialization_Type :PacketMessageSerializationType = PacketMessageSerializationType.None;
-export const TRUSTED_ORIGINS : string[] = ["localhost" , "hoppscotch.io","cbcbkhdmedgianpaifchdaddpnmgnknn"];
+export const TRUSTED_ORIGINS : string[] = ["localhost" , "hoppscotch.io","cbcbkhdmedgianpaifchdaddpnmgnknn" , "omalebghpgejjiaoknljcfmglgbpocdp"];
